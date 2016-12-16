@@ -12,7 +12,7 @@
 struct status {
 	int max_x, max_y;
 	int cur_x, cur_y;
-	bool byte;
+	bool hi;	// true = left of byte
 	int num;
 	int scr, scr2, spd, spd2;
 	int c, c2;
@@ -23,6 +23,13 @@ void bufInit(uint8_t buf[], int max){
 	for(int i = 0; i < max; i++)
 		buf[i] = i & 0xff;
 }
+
+void incnum(struct status* stt){
+	stt->num++;
+	stt->cur_x = stt->num & 0x0F;
+	stt->cur_y = stt->num >>   4;
+}
+
 ////////////////////
 
 void inpLogic(struct status* stt){
@@ -39,12 +46,53 @@ void preLogic(struct status* stt){
 	}
 	stt->cur_x &= 0xF;  stt->cur_y &= 0xF;
 	stt->num = stt->cur_x + stt->cur_y * 16;
-
 }
 
-void mainLogic(const struct status* stt, uint8_t buf[4096]){
-	if(stt->c == KEY_UP)
-		buf[0]++;
+/////////////////////
+char editbyte1(char v, char buf, bool hi){
+	buf &= hi ? 0x0F : 0xF0;
+	buf |= hi ? v<<6 : v<<2;
+	return buf;
+}
+
+char editbyte2(char v, char buf, bool hi){
+	buf += hi ? v<<4 : v<<0;
+	return buf;
+}
+
+char editbyte(char v, char buf, bool hi){
+	buf &= hi ? 0x0F : 0xF0;
+	buf |= hi ? v<<4 : v<<0;
+	return buf;
+}
+
+void mainLogic(struct status* stt, uint8_t buf[4096]){
+	int v = -1;
+	switch(stt->c){
+		case 'x':	buf[stt->num]++;	break;
+		case 'z':	buf[stt->num]--;	break;
+		case 'j':	v = 0;				break;
+		case 'k':	v = 1;			break;
+		case 'l':	v = 2;			break;
+		case ';':	v = 3;			break;
+		case 'u':	v = 4;			break;
+		case 'i':	v = 5;			break;
+		case 'o':	v = 6;			break;
+		case 'p':	v = 7;			break;
+		case 'f':	v = 8;				break;
+		case 'd':	v = 9;			break;
+		case 's':	v = 10;			break;
+		case 'a':	v = 11;			break;
+		case 'r':	v = 12;			break;
+		case 'e':	v = 13;			break;
+		case 'w':	v = 14;			break;
+		case 'q':	v = 15;			break;
+	}
+	if(v >= 0) {
+		buf[stt->num] = editbyte(v, buf[stt->num], stt->hi);
+		stt->hi ^= 1;
+		if(stt->hi) incnum(stt);
+	}
 }
 
 void pstLogic(struct status stt, const uint8_t buf[4096]){

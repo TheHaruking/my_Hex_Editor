@@ -5,12 +5,16 @@
 #include <wctype.h>
 #include <unistd.h>
 #include <locale.h>
-#include <ncursesw/ncurses.h>
+#ifdef	__unix__
+	#include <ncursesw/ncurses.h>
+#elif	__APPLE__
+	#include <ncurses.h>
+#endif
 
 #define WAIT_TIME		96
 #define MARGIN_L		9
 #define MARGIN_U		2
-#define MARGIN_SPACE	70
+#define MARGIN_ENDX		58
 #define ACCEL			0x400
 #define BRAKE			0x3
 
@@ -164,8 +168,9 @@ void pstLogic(struct status stt, const uint8_t buf[4096]){
 	attron(COLOR_PAIR(3));
 	
 	// debug
-	pos_x = MARGIN_SPACE;
-	mvprintw(2, pos_x, "spd = %08X", stt.spd);
+	mvprintw(2, MARGIN_ENDX, "spd = %08X", stt.spd);
+	mvprintw(3, MARGIN_ENDX, "日本語あいう");
+	mvprintw(4, MARGIN_ENDX, u"/u2580");
 }
 
 int main(int argv, char** args){

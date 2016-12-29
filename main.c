@@ -7,24 +7,24 @@
 #include <locale.h>
 #include <ncursesw/ncurses.h>
 
-#define WAIT_TIME 96
-#define MARGIN_L 9
-#define MARGIN_U 2
-#define MARGIN_SPACE 70
-#define ACCEL	0x400
-#define BRAKE	0x3
+#define WAIT_TIME		96
+#define MARGIN_L		9
+#define MARGIN_U		2
+#define MARGIN_SPACE	70
+#define ACCEL			0x400
+#define BRAKE			0x3
 
-#define MODE_NOBRAKE 0x80000000
+#define MODE_NOBRAKE	0x80000000
 
 struct status {
 	int max_x, max_y;	// 最大画面サイズ
-	int cur_x, cur_y;	// ??????
-	int now;			// ??????byte
-	bool hi;	// ?4bit????? : true = X0
-	int num;	// ???seek
-	int scr, scr2, spd; // ???????
-	int c, c2;	// ??????
-	unsigned int mode;	// ??????????
+	int cur_x, cur_y;	// カーソル位置
+	int now;			// 選択中byte
+	bool hi;			// true なら 左側の4bit(X0)
+	int num;			// 選択中byte
+	int scr, scr2, spd; // スクロール関連
+	int c, c2;			// 入力関連
+	unsigned int mode;	// モード
 };
 
 void bufInit(uint8_t buf[], int max){
@@ -46,7 +46,7 @@ void inpLogic(struct status* stt){
 }
 
 void preLogic(struct status* stt){
-	// ??
+	// 入力
 	switch(stt->c){
 		case KEY_RIGHT: stt->cur_x++; break;
 		case KEY_LEFT:  stt->cur_x--; break;
@@ -57,61 +57,61 @@ void preLogic(struct status* stt){
 		case KEY_SLEFT :    stt->spd -= ACCEL; break;
 	}
 	
-	// ????????
+	// カーソルロジック
 	stt->cur_x &= 0xF;  stt->cur_y &= 0xF;
 	stt->num = stt->scr2 + stt->cur_x + stt->cur_y * 16;
 }
 
 /////////////////////
 char editbyte(char v, char buf, bool hi){
-	// ???? ???OR
+	// and して OR
 	buf &= hi ? 0x0F : 0xF0;
 	buf |= hi ? v<<4 : v<<0;
 	return buf;
 }
 
 void mainLogic(struct status* stt, uint8_t buf[4096]){
-	// ????????
+	// 入力
 	int v = -1;
 	switch(stt->c){
 		case 'x':	stt->scr += 0x100;	break;
 		case 'z':	stt->scr -= 0x100;	break;
-		case 'j':	v = 0;			break;
-		case 'k':	v = 1;			break;
-		case 'l':	v = 2;			break;
-		case ';':	v = 3;			break;
-		case 'u':	v = 4;			break;
-		case 'i':	v = 5;			break;
-		case 'o':	v = 6;			break;
-		case 'p':	v = 7;			break;
-		case 'f':	v = 8;			break;
-		case 'd':	v = 9;			break;
-		case 's':	v = 10;			break;
-		case 'a':	v = 11;			break;
-		case 'r':	v = 12;			break;
-		case 'e':	v = 13;			break;
-		case 'w':	v = 14;			break;
-		case 'q':	v = 15;			break;
+		case 'j':	v = 0;	break;
+		case 'k':	v = 1;	break;
+		case 'l':	v = 2;	break;
+		case ';':	v = 3;	break;
+		case 'u':	v = 4;	break;
+		case 'i':	v = 5;	break;
+		case 'o':	v = 6;	break;
+		case 'p':	v = 7;	break;
+		case 'f':	v = 8;	break;
+		case 'd':	v = 9;	break;
+		case 's':	v = 10;	break;
+		case 'a':	v = 11;	break;
+		case 'r':	v = 12;	break;
+		case 'e':	v = 13;	break;
+		case 'w':	v = 14;	break;
+		case 'q':	v = 15;	break;
 	}
-	if(v >= 0) { // ?????
+	if(v >= 0) { // バイト編集
 		buf[stt->num] = editbyte(v, buf[stt->num], stt->hi);
 		stt->hi ^= 1;
 		if(stt->hi) incnum(stt);
 	}
 	
-	// ?????????
+	// スクロールロジック
 	stt->scr += stt->spd;
 	if(stt->scr < 0){
 		stt->scr = 0;
 		stt->spd = 0;
 	}
 	
-	// ????????
+	// スピードロジック
 	int spd_sub = stt->spd >> BRAKE;
 	if(stt->spd > 0) spd_sub++;  // ??????
 	stt->spd -= spd_sub;
 	
-	// ???????? -> ????????
+	// スクロール値 -> 表示スクロール値
 	stt->scr2  = stt->scr >> 4;
 	stt->scr2 &= 0xFFFFFFF0;
 	
@@ -182,33 +182,33 @@ int main(int argv, char** args){
 			return 1;			
 	}	
 	
-	// ??? : ncurses
+	// 初期化 : ncurses
 	initscr(); clear(); noecho(); cbreak(); 
 	nodelay(stdscr,TRUE); timeout(WAIT_TIME);
 	getmaxyx(stdscr, stt.max_y, stt.max_x);
 	keypad(stdscr, TRUE);
 	start_color();
-	init_color(0, 1000, 1000, 1000); // ?
-	init_color(7,  333,  333,  333); // ??
-	init_color(1,  666,  666,  666); // ??
-	init_color(2, 1000,  600,    0); // ?
-	init_pair(1, 0, 7); // 1.???
-	init_pair(2, 0, 1); // 2.?????
-	init_pair(3, 0, 2); // 3.?????
-	/* ????Mac????????????? */
+	init_color(0, 1000, 1000, 1000); // 白
+	init_color(7,  333,  333,  333); // 濃灰
+	init_color(1,  666,  666,  666); // 淡灰
+	init_color(2, 1000,  600,    0); // 橙
+	init_pair(1, 0, 7); // 1.見出し
+	init_pair(2, 0, 1); // 2.サブ見出し
+	init_pair(3, 0, 2); // 3.アクセント
+	/* 色変えMAC対応していない・・・ */
 
-	// ??? : myHexEd
+	// 初期化 : myHexEd
 	bufInit(buf, sizeof(buf));
 
 	while(1){
-		inpLogic(&stt);       // ??
-		preLogic(&stt);       // ?????
-		mainLogic(&stt, buf); // ???
-		pstLogic(stt, buf);   // ????
-		refresh();
+		inpLogic(&stt);			// 入力
+		preLogic(&stt);			// モードロジック
+		mainLogic(&stt, buf);	// メインロジック
+		pstLogic(stt, buf);		// 描画ロジック
+		refresh();				// 描画
 	}
 	
-	// ??
+	// おわり
 	endwin();	
 	return 0;
 }

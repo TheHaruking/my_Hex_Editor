@@ -17,7 +17,7 @@
 #define MODE_NOBRAKE 0x80000000
 
 struct status {
-	int max_x, max_y;	// ????
+	int max_x, max_y;	// 最大画面サイズ
 	int cur_x, cur_y;	// ??????
 	int now;			// ??????byte
 	bool hi;	// ?4bit????? : true = X0
